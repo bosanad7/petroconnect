@@ -1,0 +1,74 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 222 47% 5%;
+    --foreground: 210 40% 98%;
+    --card: 222 45% 8%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 45% 8%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 222 47% 11%;
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217 33% 12%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 217 91% 60%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 217 91% 60%;
+    --radius: 0.75rem;
+  }
+
+  * { @apply border-border; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1;
+    background-image:
+      radial-gradient(1200px 600px at 100% -10%, rgba(56,112,255,0.18), transparent 60%),
+      radial-gradient(900px 600px at -10% 110%, rgba(56,112,255,0.12), transparent 60%);
+    background-attachment: fixed;
+  }
+
+  ::selection { @apply bg-primary/30; }
+
+  /* Subtle scrollbars */
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--secondary));
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: hsl(var(--accent)); }
+}
+
+@layer components {
+  .glass {
+    @apply relative bg-white/[0.04] border border-white/[0.08] backdrop-blur-xl;
+  }
+  .glass-strong {
+    @apply relative bg-white/[0.06] border border-white/10 backdrop-blur-2xl;
+  }
+  .ring-focus {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+  }
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      hsl(var(--secondary)) 0%,
+      hsl(var(--muted)) 50%,
+      hsl(var(--secondary)) 100%
+    );
+    background-size: 200% 100%;
+    @apply animate-shimmer;
+  }
+  .text-balance { text-wrap: balance; }
+}
