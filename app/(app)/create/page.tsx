@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { CreateListingForm } from "@/components/marketplace/create-listing-form";
+import { DEMO_CATEGORIES, isDemoMode } from "@/lib/demo/data";
 import type { Category } from "@/types/database";
 
 export const dynamic = "force-dynamic";
@@ -10,11 +11,18 @@ export default async function CreatePage({
   searchParams: Promise<{ kind?: "product" | "service" | "service_request" }>;
 }) {
   const sp = await searchParams;
-  const supabase = await createClient();
-  const { data: categories } = await supabase
-    .from("categories")
-    .select("*")
-    .order("sort_order");
+
+  let categories: Category[];
+  if (isDemoMode()) {
+    categories = DEMO_CATEGORIES;
+  } else {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("categories")
+      .select("*")
+      .order("sort_order");
+    categories = (data ?? []) as Category[];
+  }
 
   return (
     <div className="max-w-3xl mx-auto space-y-6 animate-fade-in">
@@ -28,7 +36,7 @@ export default async function CreatePage({
         </p>
       </div>
       <CreateListingForm
-        categories={(categories ?? []) as Category[]}
+        categories={categories}
         initialKind={sp.kind ?? "product"}
       />
     </div>

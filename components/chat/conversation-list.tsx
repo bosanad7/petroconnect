@@ -7,16 +7,21 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { formatRelative, initials } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";
 
-interface ConvRow {
+export interface ConversationListItem {
   id: string;
   lastMessage: string | null;
   lastMessageAt: string | null;
   lastReadAt: string | null;
+  unreadCount: number;
   listing: { id: string; title: string; images: string[] } | null;
   peer?: { id: string; full_name: string | null; avatar_url: string | null };
 }
 
-export function ConversationList({ conversations }: { conversations: ConvRow[] }) {
+export function ConversationList({
+  conversations,
+}: {
+  conversations: ConversationListItem[];
+}) {
   const pathname = usePathname();
 
   if (!conversations.length) {
@@ -29,19 +34,17 @@ export function ConversationList({ conversations }: { conversations: ConvRow[] }
   }
 
   return (
-    <ul className="rounded-2xl glass divide-y divide-white/5 overflow-hidden">
+    <ul className="rounded-2xl bg-card border border-border shadow-sm divide-y divide-border overflow-hidden">
       {conversations.map((c) => {
         const isActive = pathname === `/chat/${c.id}`;
-        const unread =
-          c.lastMessageAt &&
-          (!c.lastReadAt || new Date(c.lastMessageAt) > new Date(c.lastReadAt));
+        const unread = c.unreadCount > 0;
         return (
           <li key={c.id}>
             <Link
               href={`/chat/${c.id}`}
               className={cn(
-                "flex gap-3 p-3 hover:bg-white/[0.04] transition",
-                isActive && "bg-primary/10",
+                "flex gap-3 p-3 transition group",
+                isActive ? "bg-primary-soft" : "hover:bg-muted/60",
               )}
             >
               <Avatar>
@@ -55,7 +58,7 @@ export function ConversationList({ conversations }: { conversations: ConvRow[] }
                   <p className="font-medium text-sm truncate">
                     {c.peer?.full_name ?? "Member"}
                   </p>
-                  <span className="text-[10px] text-muted-foreground shrink-0">
+                  <span className="text-[10px] text-muted-foreground shrink-0 tabular-nums">
                     {c.lastMessageAt && formatRelative(c.lastMessageAt)}
                   </span>
                 </div>
@@ -76,7 +79,9 @@ export function ConversationList({ conversations }: { conversations: ConvRow[] }
                 </p>
               </div>
               {unread && (
-                <span className="self-center size-2 rounded-full bg-primary shrink-0" />
+                <span className="self-center min-w-[20px] h-5 px-1.5 rounded-full bg-primary text-primary-foreground text-[10px] font-semibold grid place-items-center shrink-0 tabular-nums">
+                  {c.unreadCount > 9 ? "9+" : c.unreadCount}
+                </span>
               )}
             </Link>
           </li>

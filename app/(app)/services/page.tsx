@@ -6,6 +6,11 @@ import { ListingCard } from "@/components/marketplace/listing-card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { FilterBar } from "@/components/marketplace/filter-bar";
+import {
+  DEMO_CATEGORIES,
+  demoListingsByKind,
+  isDemoMode,
+} from "@/lib/demo/data";
 import type {
   Category,
   ListingKind,
@@ -24,6 +29,15 @@ interface PageProps {
 
 export default async function ServicesPage({ searchParams }: PageProps) {
   const params = await searchParams;
+  const tab = params.tab ?? "offers";
+  const kind: ListingKind = tab === "requests" ? "service_request" : "service";
+
+  if (isDemoMode()) {
+    const items = demoListingsByKind(kind);
+    const categories = DEMO_CATEGORIES.filter((c) => c.kind === "service");
+    return renderServices({ items, categories, tab, kind, params });
+  }
+
   const supabase = await createClient();
 
   const { data: categories } = await supabase
@@ -31,9 +45,6 @@ export default async function ServicesPage({ searchParams }: PageProps) {
     .select("*")
     .eq("kind", "service")
     .order("sort_order");
-
-  const tab = params.tab ?? "offers";
-  const kind: ListingKind = tab === "requests" ? "service_request" : "service";
 
   let query = supabase
     .from("listings")
@@ -51,11 +62,36 @@ export default async function ServicesPage({ searchParams }: PageProps) {
     if (c) query = query.eq("category_id", c.id);
   }
   if (params.q)
-    query = query.textSearch("search_tsv", params.q, { config: "simple" });
+    query = query.textSearch("search_tsv", params.q, {
+      type: "websearch",
+      config: "simple",
+    });
 
   const { data } = await query.limit(48);
   const items = (data ?? []) as ListingWithSeller[];
 
+  return renderServices({
+    items,
+    categories: (categories ?? []) as Category[],
+    tab,
+    kind,
+    params,
+  });
+}
+
+function renderServices({
+  items,
+  categories,
+  tab,
+  kind,
+  params,
+}: {
+  items: ListingWithSeller[];
+  categories: Category[];
+  tab: "offers" | "requests";
+  kind: ListingKind;
+  params: { category?: string };
+}) {
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-start justify-between gap-3">
@@ -84,7 +120,7 @@ export default async function ServicesPage({ searchParams }: PageProps) {
 
         <TabsContent value={tab} className="space-y-5">
           <FilterBar
-            categories={(categories ?? []) as Category[]}
+            categories={categories}
             currentCategory={params.category}
           />
           {items.length === 0 ? (
@@ -103,8 +139,8 @@ export default async function ServicesPage({ searchParams }: PageProps) {
             />
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {items.map((l) => (
-                <ListingCard key={l.id} listing={l} />
+              {items.map((l, i) => (
+                <ListingCard key={l.id} listing={l} index={i} />
               ))}
             </div>
           )}

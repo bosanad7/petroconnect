@@ -1,5 +1,6 @@
 import { requireAdmin } from "@/lib/supabase/auth";
 import { createClient } from "@/lib/supabase/server";
+import { ALL_DEMO_PROFILES, isDemoMode } from "@/lib/demo/data";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,15 +11,19 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminUsersPage() {
   await requireAdmin();
-  const supabase = await createClient();
 
-  const { data } = await supabase
-    .from("profiles")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .limit(100);
-
-  const users = (data ?? []) as Profile[];
+  let users: Profile[];
+  if (isDemoMode()) {
+    users = ALL_DEMO_PROFILES;
+  } else {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("profiles")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(100);
+    users = (data ?? []) as Profile[];
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -33,7 +38,7 @@ export default async function AdminUsersPage() {
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="text-left text-xs text-muted-foreground border-b border-white/5">
+              <thead className="text-left text-xs text-muted-foreground border-b border-border">
                 <tr>
                   <th className="px-5 py-3">Member</th>
                   <th className="px-5 py-3">Company</th>
@@ -42,9 +47,9 @@ export default async function AdminUsersPage() {
                   <th className="px-5 py-3">Joined</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-border">
                 {users.map((u) => (
-                  <tr key={u.id} className="hover:bg-white/[0.03]">
+                  <tr key={u.id} className="hover:bg-muted/60">
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-3">
                         <Avatar className="size-8">

@@ -39,7 +39,7 @@ export default function RegisterPage() {
       password,
       options: {
         data: { full_name: fullName },
-        emailRedirectTo: `${window.location.origin}/marketplace`,
+        emailRedirectTo: `${window.location.origin}/auth/callback?next=/marketplace`,
       },
     });
     setLoading(false);

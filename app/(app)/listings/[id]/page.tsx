@@ -1,23 +1,32 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
-  BadgeCheck,
   Building2,
   Eye,
   MapPin,
   ShieldCheck,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import {
+  demoFavoriteIds,
+  demoFindListing,
+  demoListingsByKind,
+  isDemoMode,
+} from "@/lib/demo/data";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { ImageGallery } from "@/components/marketplace/image-gallery";
 import { ContactSellerButton } from "@/components/marketplace/contact-seller-button";
+import { SellerActions } from "@/components/marketplace/seller-actions";
+import { CheckoutButton } from "@/components/payments/checkout-button";
 import { ReportDialog } from "@/components/marketplace/report-dialog";
 import { ListingCard } from "@/components/marketplace/listing-card";
 import { FavoriteButton } from "@/components/marketplace/favorite-button";
+import { TrustBadge } from "@/components/ui/trust-badge";
 import { CONDITIONS } from "@/lib/constants";
 import { formatKWD, formatRelative, initials } from "@/lib/utils/format";
+import { clientTrustScore, trustTier } from "@/lib/utils/trust";
 import type { ListingWithSeller } from "@/types/database";
 
 export const dynamic = "force-dynamic";
@@ -28,43 +37,62 @@ export default async function ListingDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const supabase = await createClient();
 
-  const { data: listing } = await supabase
-    .from("listings")
-    .select("*, seller:profiles!seller_id(*), category:categories(*)")
-    .eq("id", id)
-    .single();
+  let item: ListingWithSeller | null;
+  let similar: ListingWithSeller[];
+  let isFavorited = false;
+  let viewerId: string | null = null;
 
-  if (!listing) notFound();
-  const item = listing as ListingWithSeller;
+  if (isDemoMode()) {
+    item = demoFindListing(id);
+    if (!item) notFound();
+    similar = demoListingsByKind(item.kind)
+      .filter((l) => l.id !== item!.id && l.category_id === item!.category_id)
+      .slice(0, 4);
+    isFavorited = demoFavoriteIds().has(item.id);
+  } else {
+    const supabase = await createClient();
 
-  // Bump views (fire and forget)
-  await supabase
-    .from("listings")
-    .update({ views: (item.views ?? 0) + 1 })
-    .eq("id", id);
+    const { data: listing } = await supabase
+      .from("listings")
+      .select("*, seller:profiles!seller_id(*), category:categories(*)")
+      .eq("id", id)
+      .single();
 
-  const { data: similar } = await supabase
-    .from("listings")
-    .select("*, seller:profiles!seller_id(*), category:categories(*)")
-    .eq("status", "active")
-    .eq("category_id", item.category_id)
-    .neq("id", item.id)
-    .limit(4);
+    if (!listing) notFound();
+    item = listing as ListingWithSeller;
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    viewerId = user?.id ?? null;
 
-  const { data: fav } = user
-    ? await supabase
-        .from("favorites")
-        .select("user_id")
-        .eq("listing_id", item.id)
-        .eq("user_id", user.id)
-        .maybeSingle()
-    : { data: null };
+    // Atomic view bump, but only when someone *other* than the seller
+    // looks at the listing. Sellers refreshing their own page shouldn't
+    // inflate the counter.
+    if (user && user.id !== item.seller_id) {
+      await supabase.rpc("increment_listing_views", { p_listing: id });
+    }
+
+    const { data: sim } = await supabase
+      .from("listings")
+      .select("*, seller:profiles!seller_id(*), category:categories(*)")
+      .eq("status", "active")
+      .eq("category_id", item.category_id)
+      .neq("id", item.id)
+      .limit(4);
+    similar = (sim ?? []) as ListingWithSeller[];
+
+    const { data: fav } = user
+      ? await supabase
+          .from("favorites")
+          .select("user_id")
+          .eq("listing_id", item.id)
+          .eq("user_id", user.id)
+          .maybeSingle()
+      : { data: null };
+    isFavorited = !!fav;
+  }
 
   const conditionLabel = CONDITIONS.find((c) => c.value === item.condition)?.label;
 
@@ -88,11 +116,11 @@ export default async function ListingDetailPage({
                 </Badge>
               )}
             </div>
-            <h1 className="text-3xl font-semibold tracking-tight text-balance">
+            <h1 className="text-3xl lg:text-4xl font-semibold tracking-tight text-balance">
               {item.title}
             </h1>
             <div className="flex items-baseline gap-3">
-              <span className="text-3xl font-semibold text-primary">
+              <span className="text-3xl lg:text-4xl font-bold text-primary">
                 {formatKWD(item.price_kwd)}
               </span>
               {item.is_negotiable && (
@@ -125,7 +153,14 @@ export default async function ListingDetailPage({
                     {item.seller.full_name}
                   </p>
                   {item.seller.is_verified && (
-                    <BadgeCheck className="size-4 text-primary" />
+                    <TrustBadge
+                      tier={trustTier(clientTrustScore(item.seller))}
+                      score={clientTrustScore(item.seller)}
+                      company={item.seller.company}
+                      ratingAvg={item.seller.rating_avg}
+                      ratingCount={item.seller.rating_count}
+                      size="sm"
+                    />
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
@@ -145,13 +180,24 @@ export default async function ListingDetailPage({
 
           {/* Actions */}
           <div className="flex flex-wrap items-center gap-2">
-            <ContactSellerButton
-              listingId={item.id}
-              sellerId={item.seller.id}
-            />
+            {viewerId === item.seller_id ? (
+              <SellerActions
+                listingId={item.id}
+                listingTitle={item.title}
+                status={item.status}
+                soldTo={item.sold_to}
+              />
+            ) : viewerId && viewerId === item.reserved_for ? (
+              <CheckoutButton listingId={item.id} />
+            ) : (
+              <ContactSellerButton
+                listingId={item.id}
+                sellerId={item.seller.id}
+              />
+            )}
             <FavoriteButton
               listingId={item.id}
-              initiallyFavorited={!!fav}
+              initiallyFavorited={isFavorited}
               className="relative top-0 right-0"
             />
             <ReportDialog listingId={item.id} />
@@ -172,8 +218,8 @@ export default async function ListingDetailPage({
             <Spec label="Status" value={item.status} />
           </div>
 
-          <div className="rounded-xl p-4 glass border border-primary/20 flex gap-3 text-xs text-muted-foreground">
-            <ShieldCheck className="size-4 text-primary shrink-0" />
+          <div className="rounded-xl p-4 bg-blue-50 border border-blue-100 flex gap-3 text-xs text-blue-900">
+            <ShieldCheck className="size-4 text-blue-600 shrink-0" />
             <p>
               All members of PetroConnect are verified K-Company employees.
               Always meet in safe locations and never share OTP codes.
@@ -209,9 +255,9 @@ export default async function ListingDetailPage({
 
 function Spec({ label, value }: { label: string; value: string }) {
   return (
-    <div className="p-3 rounded-xl glass">
+    <div className="p-3 rounded-xl bg-muted border border-border">
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="text-sm font-medium capitalize">{value}</p>
+      <p className="text-sm font-medium capitalize text-foreground">{value}</p>
     </div>
   );
 }

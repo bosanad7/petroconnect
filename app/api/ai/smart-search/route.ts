@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { chatJSON } from "@/lib/ai/openrouter";
+import { takeToken, rateLimitHeaders } from "@/lib/ai/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -28,6 +29,14 @@ export async function POST(req: Request) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const limit = takeToken(`ai:${user.id}`);
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: "Too many AI requests. Try again in a few minutes." },
+      { status: 429, headers: rateLimitHeaders(limit) },
+    );
+  }
+
   let rewrite: RewriteResult = {
     keywords: parsed.data.q.split(/\s+/),
     intent: "unknown",
@@ -49,13 +58,18 @@ export async function POST(req: Request) {
     /* fall back to naive split */
   }
 
-  const tsQuery = rewrite.keywords.filter(Boolean).join(" | ");
+  // Use websearch_to_tsquery semantics so we don't have to escape any
+  // special chars the model might emit (`:`, `&`, parens, etc.).
+  const tsQuery = rewrite.keywords
+    .filter(Boolean)
+    .map((k) => k.replace(/["']/g, "")) // websearch handles the rest
+    .join(" OR ");
 
   const { data } = await supabase
     .from("listings")
     .select("id, title, price_kwd, images, kind")
     .eq("status", "active")
-    .textSearch("search_tsv", tsQuery, { config: "simple" })
+    .textSearch("search_tsv", tsQuery, { type: "websearch", config: "simple" })
     .limit(20);
 
   return NextResponse.json({

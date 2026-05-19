@@ -2,63 +2,84 @@ import Link from "next/link";
 import { MessageSquare } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile } from "@/lib/supabase/auth";
-import { ConversationList } from "@/components/chat/conversation-list";
+import { DEMO_CONVERSATIONS, isDemoMode } from "@/lib/demo/data";
+import { ConversationList, type ConversationListItem } from "@/components/chat/conversation-list";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 
 export const dynamic = "force-dynamic";
 
+interface SummaryRow {
+  conversation_id: string;
+  last_message: string | null;
+  last_message_at: string | null;
+  last_read_at: string | null;
+  peer_id: string | null;
+  peer_full_name: string | null;
+  peer_avatar_url: string | null;
+  listing_id: string | null;
+  listing_title: string | null;
+  listing_images: string[] | null;
+  unread_count: number | null;
+}
+
 export default async function ChatIndexPage() {
   const me = await requireProfile();
-  const supabase = await createClient();
 
-  const { data: rows } = await supabase
-    .from("conversation_participants")
-    .select(
-      `conversation_id,
-       last_read_at,
-       conversations!inner (
-         id, last_message, last_message_at, created_at,
-         listing:listings(id, title, images)
-       )`,
-    )
-    .eq("user_id", me.id);
-
-  const ids = (rows ?? []).map((r) => r.conversation_id);
-
-  // Fetch peers for each conversation
-  const peerMap: Record<string, { id: string; full_name: string | null; avatar_url: string | null }> = {};
-  if (ids.length) {
-    const { data: peers } = await supabase
-      .from("conversation_participants")
-      .select("conversation_id, profiles:profiles!user_id(id, full_name, avatar_url)")
-      .in("conversation_id", ids)
-      .neq("user_id", me.id);
-    for (const row of peers ?? []) {
-      const p = (row as unknown as { profiles: { id: string; full_name: string | null; avatar_url: string | null } }).profiles;
-      if (p) peerMap[(row as { conversation_id: string }).conversation_id] = p;
-    }
+  if (isDemoMode()) {
+    const conversations: ConversationListItem[] = DEMO_CONVERSATIONS.map((c) => ({
+      id: c.id,
+      lastMessage: c.last_message,
+      lastMessageAt: c.last_message_at,
+      lastReadAt: c.lastReadAt,
+      unreadCount: c.lastReadAt && c.last_message_at && c.last_message_at > c.lastReadAt ? 1 : 0,
+      listing: { id: c.listing.id, title: c.listing.title, images: c.listing.images },
+      peer: { id: c.peer.id, full_name: c.peer.full_name, avatar_url: c.peer.avatar_url },
+    }));
+    return renderChat({ conversations });
   }
 
-  const conversations = (rows ?? [])
-    // @ts-expect-error nested
-    .map((r) => ({
-      id: r.conversation_id,
-      lastReadAt: r.last_read_at,
-      // @ts-expect-error nested
-      lastMessage: r.conversations?.last_message ?? null,
-      // @ts-expect-error nested
-      lastMessageAt: r.conversations?.last_message_at ?? null,
-      // @ts-expect-error nested
-      listing: r.conversations?.listing ?? null,
-      peer: peerMap[r.conversation_id],
-    }))
-    .sort(
-      (a, b) =>
-        new Date(b.lastMessageAt ?? 0).getTime() -
-        new Date(a.lastMessageAt ?? 0).getTime(),
-    );
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("conversation_summaries")
+    .select("*")
+    .order("last_message_at", { ascending: false, nullsFirst: false });
 
+  if (error) {
+    throw error;
+  }
+
+  const conversations: ConversationListItem[] = ((data ?? []) as SummaryRow[]).map(
+    (r) => ({
+      id: r.conversation_id,
+      lastMessage: r.last_message,
+      lastMessageAt: r.last_message_at,
+      lastReadAt: r.last_read_at,
+      unreadCount: r.unread_count ?? 0,
+      peer: r.peer_id
+        ? {
+            id: r.peer_id,
+            full_name: r.peer_full_name,
+            avatar_url: r.peer_avatar_url,
+          }
+        : undefined,
+      listing: r.listing_id
+        ? {
+            id: r.listing_id,
+            title: r.listing_title ?? "",
+            images: r.listing_images ?? [],
+          }
+        : null,
+    }),
+  );
+
+  // Sanity check: silence the unused warning if `me` ever becomes optional.
+  void me;
+
+  return renderChat({ conversations });
+}
+
+function renderChat({ conversations }: { conversations: ConversationListItem[] }) {
   return (
     <div className="grid lg:grid-cols-[360px_1fr] gap-6 animate-fade-in">
       <aside className="space-y-3">

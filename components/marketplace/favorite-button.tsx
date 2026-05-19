@@ -61,15 +61,15 @@ export function FavoriteButton({
       onClick={toggle}
       aria-label={favorited ? "Remove from saved" : "Save"}
       className={cn(
-        "size-9 grid place-items-center rounded-full glass-strong border border-white/10 transition",
-        "hover:bg-white/[0.12] ring-focus",
+        "size-9 grid place-items-center rounded-full bg-white/95 backdrop-blur border border-white/80 shadow-sm transition",
+        "hover:bg-white hover:scale-105 ring-focus",
         className,
       )}
     >
       <Heart
         className={cn(
           "size-4 transition-colors",
-          favorited ? "fill-red-500 text-red-500" : "text-white",
+          favorited ? "fill-red-500 text-red-500" : "text-foreground",
         )}
       />
     </button>

@@ -66,19 +66,32 @@ petroconnect/
 
 ## 3 · Database
 
-The schema is in **[supabase/schema.sql](./supabase/schema.sql)** with these tables:
+The schema is split across three files — run them in order:
 
-`profiles · categories · listings · favorites · conversations · conversation_participants · messages · reports · notifications · ai_recommendations`
+| Order | File                                                          | Purpose                                                              |
+| ----- | ------------------------------------------------------------- | -------------------------------------------------------------------- |
+| 1     | **[supabase/schema.sql](./supabase/schema.sql)**              | Tables, enums, FTS triggers, `handle_new_user` auth hook             |
+| 2     | **[supabase/policies.sql](./supabase/policies.sql)**          | Row-Level Security + storage bucket policies                         |
+| 3     | **[supabase/functions.sql](./supabase/functions.sql)**        | RPCs, notification triggers, `conversation_summaries` view, indexes  |
+| 4     | **[supabase/ai.sql](./supabase/ai.sql)**                      | `pgvector` extension, embedding column, `match_listings` / `find_similar_listings` / `suggest_price` RPCs |
+| 5     | **[supabase/seed.sql](./supabase/seed.sql)**                  | Default product + service categories                                 |
+
+For a single-paste install use **[supabase/migration.sql](./supabase/migration.sql)** — all five files concatenated.
+
+Tables: `profiles · categories · listings · favorites · conversations · conversation_participants · messages · reports · notifications · ai_recommendations`
 
 Highlights:
 
 - **K-Company enum** + auto-detected on signup via the `handle_new_user` trigger
-- **Listings full-text search** via `tsvector` + `gin` index — fed automatically by trigger
-- **Realtime-ready** for `messages` and `conversations`
+- **Full-text search** on listings (`tsvector` + `gin`), kept in sync by trigger
+- **Realtime** enabled for `messages` and `notifications` (turn on in Supabase → Database → Replication)
 - **Service-request** listings are first-class via `kind = 'service_request'`
 - **AI columns** (`ai_score`, `ai_flags`) on listings for fraud monitoring
+- **Auto-notifications** — a DB trigger drops a row into `notifications` when someone messages you or saves your listing. The dropdown subscribes via Realtime.
+- **One-query chat list** — the `conversation_summaries` view joins peer + listing + unread count behind RLS so the client doesn't fan out
+- **`increment_listing_views(uuid)`** RPC bumps the counter atomically (and skips bumps for the seller's own visits)
 
-Row-Level Security is in **[supabase/policies.sql](./supabase/policies.sql)** — every table is locked down. Storage buckets `listing-images` and `avatars` are public-read, auth-only-write.
+Row-Level Security is in `policies.sql` — every table is locked down. Storage buckets `listing-images` and `avatars` are public-read, auth-only-write.
 
 ---
 
@@ -106,16 +119,29 @@ cp .env.example .env.local
 # Open Supabase → SQL editor and run, in order:
 #   supabase/schema.sql
 #   supabase/policies.sql
+#   supabase/functions.sql
 #   supabase/seed.sql
+
+# 4 · Enable realtime
+# Supabase → Database → Replication → toggle ON for:
+#   public.messages
+#   public.notifications
 
 # (Optional) make signups auto-promote chosen emails to admin:
 # In Supabase → Database → Settings → Custom Postgres config, set
 #   app.admin_emails = 'you@kpc.com.kw,other@knpc.com'
 
-# 4 · Start dev
+# 5 · Start dev
 npm run dev
 # → http://localhost:3000
 ```
+
+### Local-only demo mode
+
+Set `NEXT_PUBLIC_DEMO_MODE=true` in `.env.local` to bypass Supabase entirely
+and explore the UI with mock data (used for stakeholder reviews). Every page
+in `app/(app)/*` short-circuits to fixtures in `lib/demo/data.ts`. **Never set
+this in production.**
 
 ### Auth notes
 
@@ -147,15 +173,35 @@ Run the policies file once — it auto-creates `listing-images` and `avatars` bu
 
 ## 6 · AI surface
 
+### Endpoints
+
 | Endpoint                                | Use case |
 | --------------------------------------- | -------- |
+| `POST /api/ai/generate-title`           | Returns 3 candidate titles from a description (5–10 words each) |
 | `POST /api/ai/generate-description`     | Drafts a 110-word marketplace description from a title |
 | `POST /api/ai/suggest-category`         | Picks the best slug from our category list |
+| `POST /api/ai/suggest-price`            | Returns price percentiles (low/median/high) from semantic neighbours |
+| `POST /api/ai/check-duplicate`          | Surfaces near-duplicate listings (fingerprint + cosine similarity) |
 | `POST /api/ai/detect-fraud`             | Returns `{ score, flags, rationale }` — feeds admin's "high-risk" panel |
-| `POST /api/ai/smart-search`             | Rewrites fuzzy queries → keyword vector → FTS results |
-| `GET  /api/ai/recommendations`          | Personalised ranked listings for the home feed |
+| `POST /api/ai/search`                   | Hybrid semantic + FTS search (reciprocal-rank fusion) |
+| `POST /api/ai/smart-search`             | Lightweight FTS-only path (kept for backwards compat) |
+| `GET  /api/ai/recommendations`          | Personalised ranked listings, enriched with title/price/images |
+| `POST /api/ai/embed-listing`            | Computes + persists the embedding + fingerprint for a single listing |
 
-All routes are server-only, authenticated, and use `lib/ai/openrouter.ts` with strict JSON output where appropriate.
+All routes are server-only, authenticated, rate-limited (`lib/ai/rate-limit.ts`), and use `lib/ai/openrouter.ts` for chat completions / `lib/ai/embed.ts` for vectors.
+
+### Embeddings
+
+- **Model:** `openai/text-embedding-3-small` (1536 dim) via OpenRouter, or directly from OpenAI if `OPENAI_API_KEY` is set
+- **Storage:** `public.listings.embedding vector(1536)` with an HNSW index for cosine similarity
+- **Backfill:** on every listing publish the create form fires `POST /api/ai/embed-listing` (non-blocking). To backfill existing rows, loop over them and re-call the endpoint.
+- **Graceful degradation:** if no provider key is configured the routes return clear "embedding-unavailable" responses and the marketplace falls back to FTS-only.
+
+### Where the AI shows up in the UI
+
+- **Topbar** — `<SmartSearch>` debounced dropdown: as you type, hits the hybrid `/api/ai/search` and shows AI-ranked previews
+- **Marketplace** — `<RecommendationsRail>` at the top of the feed
+- **Create listing** — AI title button, AI description, AI category, live price suggestion badge, pre-publish duplicate modal, async fraud-score on publish
 
 ---
 
@@ -170,13 +216,15 @@ All routes are server-only, authenticated, and use `lib/ai/openrouter.ts` with s
 
 ### Production checklist
 
-- [ ] Run `schema.sql`, `policies.sql`, `seed.sql` against the **production** Supabase project.
+- [ ] Run **all four** SQL files against the production Supabase project, in order: `schema.sql` → `policies.sql` → `functions.sql` → `seed.sql`.
+- [ ] **`NEXT_PUBLIC_DEMO_MODE` must be unset or `false`** in production env.
 - [ ] Lock the `ALLOWED_DOMAINS` list in `lib/constants.ts` to your true approved set.
 - [ ] Enable **email confirmation** in Supabase Auth.
-- [ ] Turn on **Realtime** for the `messages` and `conversations` tables (Database → Replication).
+- [ ] Turn on **Realtime** for `public.messages` and `public.notifications` (Database → Replication).
 - [ ] Set `ADMIN_EMAILS` and re-run the `app.admin_emails` Postgres setting in production.
 - [ ] Add a custom domain and HTTPS in Vercel.
 - [ ] Rotate the `SUPABASE_SERVICE_ROLE_KEY` and store it only in Vercel's encrypted env.
+- [ ] Regenerate the typed DB: `npx supabase gen types typescript --project-id <id> > types/supabase.ts` (replaces the hand-written one).
 
 ---
 

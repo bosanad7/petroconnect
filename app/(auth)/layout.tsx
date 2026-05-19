@@ -9,8 +9,8 @@ export default function AuthLayout({
   return (
     <div className="min-h-screen grid lg:grid-cols-2">
       {/* Left — hero panel */}
-      <div className="hidden lg:flex relative flex-col p-10 border-r border-white/5 overflow-hidden">
-        <div className="absolute inset-0 -z-10 bg-radial-glow" />
+      <div className="hidden lg:flex relative flex-col p-10 overflow-hidden bg-gradient-to-br from-orange-50 via-card to-blue-50 border-r border-border">
+        <div className="absolute inset-0 -z-10 mesh-backdrop opacity-60" />
         <Logo />
         <div className="my-auto space-y-6 max-w-md animate-fade-in">
           <h2 className="text-3xl font-semibold tracking-tight">

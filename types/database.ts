@@ -55,8 +55,67 @@ export interface Listing {
   views: number;
   ai_score: number | null;
   ai_flags: Record<string, unknown> | null;
+  reserved_for: string | null;
+  sold_to: string | null;
+  sold_at: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export type PaymentProvider =
+  | "mock"
+  | "myfatoorah"
+  | "tap"
+  | "knet"
+  | "apple_pay"
+  | "card";
+
+export type PaymentStatus =
+  | "pending"
+  | "processing"
+  | "paid"
+  | "failed"
+  | "refunded"
+  | "cancelled";
+
+export interface Payment {
+  id: string;
+  listing_id: string;
+  buyer_id: string;
+  seller_id: string;
+  amount: number;
+  platform_fee: number;
+  total: number;
+  currency: "KWD";
+  provider: PaymentProvider;
+  provider_payment_id: string | null;
+  status: PaymentStatus;
+  metadata: Record<string, unknown> | null;
+  created_at: string;
+  updated_at: string;
+  paid_at: string | null;
+  failed_at: string | null;
+  refunded_at: string | null;
+}
+
+export interface PaymentEvent {
+  id: string;
+  payment_id: string;
+  event_type: string;
+  payload: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export interface Transaction {
+  id: string;
+  payment_id: string;
+  listing_id: string;
+  buyer_id: string;
+  seller_id: string;
+  amount: number;
+  platform_fee: number;
+  total: number;
+  completed_at: string;
 }
 
 export interface ListingWithSeller extends Listing {
@@ -78,11 +137,24 @@ export interface ConversationParticipant {
   last_read_at: string | null;
 }
 
+export type MessageKind = "text" | "offer" | "offer_response" | "system";
+
+export interface OfferData {
+  amount: number;
+  currency?: "KWD";
+}
+export interface OfferResponseData {
+  refers_to: string;            // offer message id
+  action: "accept" | "decline";
+}
+
 export interface Message {
   id: string;
   conversation_id: string;
   sender_id: string;
   body: string;
+  kind?: MessageKind;
+  data?: OfferData | OfferResponseData | Record<string, unknown> | null;
   created_at: string;
 }
 

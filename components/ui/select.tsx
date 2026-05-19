@@ -16,9 +16,9 @@ export const SelectTrigger = React.forwardRef<
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(
-      "flex h-11 w-full items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-sm",
+      "flex h-11 w-full items-center justify-between rounded-xl border border-border bg-card px-4 py-2 text-sm text-foreground",
       "placeholder:text-muted-foreground ring-focus disabled:cursor-not-allowed disabled:opacity-50",
-      "hover:border-white/15 focus:border-primary/60 transition",
+      "hover:border-foreground/20 focus:border-primary/60 focus:shadow-[0_0_0_4px_rgba(255,106,0,0.12)] transition",
       "[&>span]:line-clamp-1",
       className,
     )}
@@ -26,7 +26,7 @@ export const SelectTrigger = React.forwardRef<
   >
     {children}
     <SelectPrimitive.Icon asChild>
-      <ChevronDown className="h-4 w-4 opacity-60" />
+      <ChevronDown className="h-4 w-4 text-muted-foreground" />
     </SelectPrimitive.Icon>
   </SelectPrimitive.Trigger>
 ));
@@ -41,8 +41,8 @@ export const SelectContent = React.forwardRef<
       ref={ref}
       position={position}
       className={cn(
-        "relative z-50 max-h-96 min-w-[8rem] overflow-hidden rounded-xl border border-white/10",
-        "glass-strong text-popover-foreground shadow-glass",
+        "relative z-50 max-h-96 min-w-[8rem] overflow-hidden rounded-xl border border-border",
+        "bg-card text-popover-foreground shadow-lg",
         "data-[state=open]:animate-in data-[state=closed]:animate-out",
         "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
         position === "popper" && "translate-y-1",
@@ -66,12 +66,12 @@ export const SelectItem = React.forwardRef<
     ref={ref}
     className={cn(
       "relative flex w-full cursor-default select-none items-center rounded-md py-2 pl-8 pr-3 text-sm outline-none",
-      "focus:bg-white/[0.06] data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      "focus:bg-muted data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
       className,
     )}
     {...props}
   >
-    <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+    <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center text-primary">
       <SelectPrimitive.ItemIndicator>
         <Check className="h-4 w-4" />
       </SelectPrimitive.ItemIndicator>

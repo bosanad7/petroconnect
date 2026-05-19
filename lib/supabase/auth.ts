@@ -1,8 +1,10 @@
 import { redirect } from "next/navigation";
 import { createClient } from "./server";
+import { DEMO_ME, isDemoMode } from "@/lib/demo/data";
 import type { Profile } from "@/types/database";
 
 export async function getSession() {
+  if (isDemoMode()) return { id: DEMO_ME.id, email: DEMO_ME.email } as const;
   const supabase = await createClient();
   const {
     data: { user },
@@ -17,6 +19,7 @@ export async function requireUser() {
 }
 
 export async function getProfile(): Promise<Profile | null> {
+  if (isDemoMode()) return DEMO_ME;
   const supabase = await createClient();
   const {
     data: { user },

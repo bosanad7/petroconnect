@@ -33,35 +33,18 @@ export function ContactSellerButton({
       return;
     }
 
-    // Find existing conversation
-    const { data: existing } = await supabase
-      .from("conversation_participants")
-      .select("conversation_id, conversations!inner(listing_id)")
-      .eq("user_id", user.id);
-
-    const match = (existing ?? []).find(
-      // @ts-expect-error nested supabase select
-      (row) => row.conversations?.listing_id === listingId,
+    // Single RPC handles both: find existing 1:1 conversation, or create
+    // it + add both participants atomically. Done server-side so RLS
+    // doesn't trip on the read-after-insert race.
+    const { data: conversationId, error } = await supabase.rpc(
+      "start_conversation",
+      { p_listing: listingId, p_peer: sellerId },
     );
 
-    let conversationId = match?.conversation_id;
-
-    if (!conversationId) {
-      const { data: conv, error } = await supabase
-        .from("conversations")
-        .insert({ listing_id: listingId })
-        .select("id")
-        .single();
-      if (error || !conv) {
-        toast.error("Could not start conversation");
-        setLoading(false);
-        return;
-      }
-      conversationId = conv.id;
-      await supabase.from("conversation_participants").insert([
-        { conversation_id: conversationId, user_id: user.id },
-        { conversation_id: conversationId, user_id: sellerId },
-      ]);
+    if (error || !conversationId) {
+      toast.error(error?.message ?? "Could not start conversation");
+      setLoading(false);
+      return;
     }
 
     router.push(`/chat/${conversationId}`);

@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-import { chat } from "@/lib/ai/openrouter";
+import { chat, AINotConfiguredError } from "@/lib/ai/openrouter";
+import { takeToken, rateLimitHeaders } from "@/lib/ai/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -18,6 +19,14 @@ export async function POST(req: Request) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const limit = takeToken(`ai:${user.id}`);
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: "Too many AI requests. Try again in a few minutes." },
+      { status: 429, headers: rateLimitHeaders(limit) },
+    );
+  }
 
   const parsed = Body.safeParse(await req.json());
   if (!parsed.success)
@@ -52,6 +61,9 @@ export async function POST(req: Request) {
     );
     return NextResponse.json({ description: text.trim() });
   } catch (e: unknown) {
+    if (e instanceof AINotConfiguredError) {
+      return NextResponse.json({ error: e.message }, { status: 503 });
+    }
     const msg = e instanceof Error ? e.message : "AI failed";
     return NextResponse.json({ error: msg }, { status: 500 });
   }

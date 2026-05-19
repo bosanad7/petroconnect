@@ -16,7 +16,7 @@ const NAV = [
 export function MobileNav({ profileId }: { profileId: string }) {
   const pathname = usePathname();
   return (
-    <nav className="lg:hidden fixed bottom-0 inset-x-0 z-30 glass-strong border-t border-white/10">
+    <nav className="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-card/95 backdrop-blur-xl border-t border-border shadow-[0_-4px_24px_-4px_rgba(15,23,42,0.06)]">
       <ul className="grid grid-cols-5">
         {NAV.map((item) => {
           const href = item.href === "/profile" ? `/profile/${profileId}` : item.href;
@@ -37,11 +37,19 @@ export function MobileNav({ profileId }: { profileId: string }) {
                   className={cn(
                     "size-9 grid place-items-center rounded-xl",
                     item.accent
-                      ? "bg-gradient-to-br from-primary to-blue-500 text-primary-foreground shadow-glow"
+                      ? "text-white shadow-orange"
                       : active
-                      ? "bg-primary/15"
+                      ? "bg-primary-soft"
                       : "",
                   )}
+                  style={
+                    item.accent
+                      ? {
+                          background:
+                            "linear-gradient(140deg, #FF8533 0%, #FF6A00 100%)",
+                        }
+                      : undefined
+                  }
                 >
                   <Icon className="size-4" />
                 </span>

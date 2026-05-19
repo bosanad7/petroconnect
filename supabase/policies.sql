@@ -15,10 +15,27 @@ alter table public.ai_recommendations        enable row level security;
 
 -- Helper: is current user an admin?
 create or replace function public.is_admin() returns boolean
-language sql stable security definer as $$
+language sql stable security definer
+set search_path = public, pg_catalog
+as $$
   select coalesce(
     (select role = 'admin' from public.profiles where id = auth.uid()),
     false
+  );
+$$;
+
+-- Helper: is the calling user a participant in this conversation?
+-- SECURITY DEFINER so it can scan conversation_participants without
+-- being filtered by that table's own RLS policy (which would otherwise
+-- recurse and silently return zero rows).
+create or replace function public.is_conversation_member(p_conv uuid)
+returns boolean
+language sql stable security definer
+set search_path = public, pg_catalog
+as $$
+  select exists(
+    select 1 from public.conversation_participants
+    where conversation_id = p_conv and user_id = auth.uid()
   );
 $$;
 
@@ -104,10 +121,7 @@ drop policy if exists "conversations read participant" on public.conversations;
 create policy "conversations read participant"
   on public.conversations for select
   using (
-    exists (
-      select 1 from public.conversation_participants cp
-      where cp.conversation_id = conversations.id and cp.user_id = auth.uid()
-    )
+    public.is_conversation_member(id)
     or public.is_admin()
   );
 
@@ -117,15 +131,12 @@ create policy "conversations insert any"
   with check (auth.role() = 'authenticated');
 
 drop policy if exists "cp read own" on public.conversation_participants;
-create policy "cp read own"
+drop policy if exists "cp read own or peer" on public.conversation_participants;
+create policy "cp read own or peer"
   on public.conversation_participants for select
   using (
     user_id = auth.uid()
-    or exists (
-      select 1 from public.conversation_participants me
-      where me.conversation_id = conversation_participants.conversation_id
-        and me.user_id = auth.uid()
-    )
+    or public.is_conversation_member(conversation_id)
   );
 
 drop policy if exists "cp insert self or peer" on public.conversation_participants;
@@ -143,11 +154,7 @@ drop policy if exists "messages read participant" on public.messages;
 create policy "messages read participant"
   on public.messages for select
   using (
-    exists (
-      select 1 from public.conversation_participants cp
-      where cp.conversation_id = messages.conversation_id
-        and cp.user_id = auth.uid()
-    )
+    public.is_conversation_member(conversation_id)
     or public.is_admin()
   );
 
@@ -156,11 +163,7 @@ create policy "messages insert participant"
   on public.messages for insert
   with check (
     sender_id = auth.uid()
-    and exists (
-      select 1 from public.conversation_participants cp
-      where cp.conversation_id = messages.conversation_id
-        and cp.user_id = auth.uid()
-    )
+    and public.is_conversation_member(conversation_id)
   );
 
 -- ---------------------------------------------------------------------

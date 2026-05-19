@@ -217,25 +217,33 @@ create table if not exists public.ai_recommendations (
 -- ---------------------------------------------------------------------
 -- AUTH TRIGGER — bootstrap a profile when a user signs up
 -- ---------------------------------------------------------------------
-create or replace function public.handle_new_user() returns trigger as $$
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+-- IMPORTANT: supabase_auth_admin (the role that triggers this) has a stricter
+-- search_path than postgres, so we set it explicitly and fully-qualify every
+-- enum cast. Otherwise the function works in psql but fails on real signups.
+set search_path = public, pg_catalog
+as $$
 declare
-  v_company k_company;
+  v_company public.k_company;
   v_domain text;
   v_admin_emails text := coalesce(current_setting('app.admin_emails', true), '');
 begin
   v_domain := lower(split_part(new.email, '@', 2));
 
   v_company := case
-    when v_domain like '%kpc.com.kw'   then 'KPC'::k_company
-    when v_domain like '%kockw.com'    then 'KOC'::k_company
-    when v_domain like '%knpc.com'     then 'KNPC'::k_company
-    when v_domain like '%kipic.com.kw' then 'KIPIC'::k_company
-    when v_domain like '%pic.com.kw'   then 'PIC'::k_company
-    when v_domain like '%kgoc.com'     then 'KGOC'::k_company
-    when v_domain like '%kufpec.com'   then 'KUFPEC'::k_company
-    when v_domain like '%kotc.com.kw'  then 'KOTC'::k_company
-    when v_domain like '%kafco.com.kw' then 'KAFCO'::k_company
-    when v_domain like '%q8.com'       then 'Q8'::k_company
+    when v_domain like '%kpc.com.kw'   then 'KPC'::public.k_company
+    when v_domain like '%kockw.com'    then 'KOC'::public.k_company
+    when v_domain like '%knpc.com'     then 'KNPC'::public.k_company
+    when v_domain like '%kipic.com.kw' then 'KIPIC'::public.k_company
+    when v_domain like '%pic.com.kw'   then 'PIC'::public.k_company
+    when v_domain like '%kgoc.com'     then 'KGOC'::public.k_company
+    when v_domain like '%kufpec.com'   then 'KUFPEC'::public.k_company
+    when v_domain like '%kotc.com.kw'  then 'KOTC'::public.k_company
+    when v_domain like '%kafco.com.kw' then 'KAFCO'::public.k_company
+    when v_domain like '%q8.com'       then 'Q8'::public.k_company
     else null
   end;
 
@@ -247,12 +255,13 @@ begin
     v_company,
     v_company is not null,
     case when position(new.email in v_admin_emails) > 0
-         then 'admin'::user_role else 'member'::user_role end
+         then 'admin'::public.user_role else 'member'::public.user_role end
   )
   on conflict (id) do nothing;
 
   return new;
-end $$ language plpgsql security definer;
+end
+$$;
 
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created

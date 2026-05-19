@@ -14,13 +14,29 @@ export interface OpenRouterOptions {
   max_tokens?: number;
 }
 
+/**
+ * Specific error so API routes can return a friendly 503 instead of a
+ * generic 500 when the OpenRouter key is missing. Routes check
+ * `err instanceof AINotConfiguredError`.
+ */
+export class AINotConfiguredError extends Error {
+  constructor() {
+    super("AI is not configured — add OPENROUTER_API_KEY to .env.local");
+    this.name = "AINotConfiguredError";
+  }
+}
+
+export function isAIConfigured() {
+  return Boolean(process.env.OPENROUTER_API_KEY);
+}
+
 export async function chat(
   messages: ChatMessage[],
   opts: OpenRouterOptions = {},
 ): Promise<string> {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) {
-    throw new Error("OPENROUTER_API_KEY is not set");
+    throw new AINotConfiguredError();
   }
 
   const res = await fetch(ENDPOINT, {

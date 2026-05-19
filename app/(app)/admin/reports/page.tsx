@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/supabase/auth";
 import { createClient } from "@/lib/supabase/server";
+import { DEMO_REPORTS, isDemoMode } from "@/lib/demo/data";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -11,18 +12,31 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminReportsPage() {
   await requireAdmin();
-  const supabase = await createClient();
 
-  const { data: reports } = await supabase
-    .from("reports")
-    .select(
-      `*, reporter:profiles!reporter_id(full_name, email),
-           target:profiles!target_user_id(full_name),
-           listing:listings(id, title)`,
-    )
-    .order("created_at", { ascending: false });
-
-  const list = reports ?? [];
+  let list: unknown[];
+  if (isDemoMode()) {
+    list = DEMO_REPORTS;
+  } else {
+    const supabase = await createClient();
+    const { data: reports } = await supabase
+      .from("reports")
+      .select(
+        `*, reporter:profiles!reporter_id(full_name, email),
+             target:profiles!target_user_id(full_name),
+             listing:listings(id, title)`,
+      )
+      .order("created_at", { ascending: false });
+    list = reports ?? [];
+  }
+  const reports = list as Array<{
+    id: string;
+    reason: string;
+    details: string | null;
+    status: "open" | "reviewing" | "resolved" | "dismissed";
+    created_at: string;
+    reporter: { full_name: string | null; email: string };
+    listing: { id: string; title: string } | null;
+  }>;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -33,14 +47,14 @@ export default async function AdminReportsPage() {
         </p>
       </div>
 
-      {list.length === 0 ? (
+      {reports.length === 0 ? (
         <EmptyState
           title="All clear"
           description="No open reports right now."
         />
       ) : (
         <div className="grid gap-3">
-          {list.map((r) => (
+          {reports.map((r) => (
             <Card key={r.id}>
               <CardContent className="p-5 flex flex-col lg:flex-row gap-4 lg:items-center">
                 <div className="flex-1 space-y-1">
@@ -62,18 +76,14 @@ export default async function AdminReportsPage() {
                     <p className="text-sm text-muted-foreground">{r.details}</p>
                   )}
                   <p className="text-xs text-muted-foreground">
-                    {/* @ts-expect-error nested */}
                     Reported by {r.reporter?.full_name ?? r.reporter?.email}
-                    {/* @ts-expect-error nested */}
                     {r.listing && (
                       <>
                         {" · "}
                         <Link
-                          // @ts-expect-error nested
                           href={`/listings/${r.listing.id}`}
                           className="text-primary hover:underline"
                         >
-                          {/* @ts-expect-error nested */}
                           {r.listing.title}
                         </Link>
                       </>
@@ -83,7 +93,6 @@ export default async function AdminReportsPage() {
                 </div>
                 <ReportActions
                   reportId={r.id}
-                  // @ts-expect-error nested
                   listingId={r.listing?.id ?? null}
                   currentStatus={r.status}
                 />
