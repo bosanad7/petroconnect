@@ -9,6 +9,7 @@ import {
   Flag,
   LayoutDashboard,
   Receipt,
+  ShieldAlert,
   ShieldCheck,
   Users,
 } from "lucide-react";
@@ -20,7 +21,8 @@ const TABS = [
   { href: "/admin/transactions",   label: "Transactions", icon: Receipt },
   { href: "/admin/listings",       label: "Listings",     icon: Activity },
   { href: "/admin/users",          label: "Members",      icon: Users },
-  { href: "/admin/reports",        label: "Trust & safety", icon: ShieldCheck },
+  { href: "/admin/moderation",     label: "AI moderation", icon: ShieldAlert },
+  { href: "/admin/reports",        label: "Reports",      icon: ShieldCheck },
 ];
 
 export function AdminTabs() {

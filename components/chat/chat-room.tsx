@@ -126,9 +126,33 @@ export function ChatRoom({
       toast.error("Could not send");
       return;
     }
-    setMessages((p) =>
-      p.map((m) => (m.id === tmpId ? (data as Message) : m)),
-    );
+    const saved = data as Message;
+    setMessages((p) => p.map((m) => (m.id === tmpId ? saved : m)));
+
+    // Fire-and-forget moderation. We don't block the chat on it; if the
+    // model flags the message it gets stamped server-side and surfaces
+    // in the admin queue. We *do* warn the sender for high-severity hits
+    // so they can think twice (and because some flags — like sharing
+    // bank credentials — are usually accidental).
+    void fetch("/api/ai/moderate-message", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message_id: saved.id }),
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((res) => {
+        if (res?.flagged) {
+          const cats = (res.categories as string[] | undefined)?.join(", ");
+          toast.warning("Heads up — that message was flagged", {
+            description: cats
+              ? `Reason: ${cats}. An admin may review it.`
+              : "An admin may review it.",
+          });
+        }
+      })
+      .catch(() => {
+        /* swallow — moderation is best-effort */
+      });
   }
 
   async function respondToOffer(
