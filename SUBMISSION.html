@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>PetroConnect — Final Project Submission</title>
+  <style>
+    :root {
+      --ink:        #0f172a;
+      --muted:      #475569;
+      --soft:       #64748b;
+      --line:       #e2e8f0;
+      --orange:     #ff6a00;
+      --orange-50:  #fff4eb;
+      --blue:       #1d4ed8;
+      --bg:         #ffffff;
+    }
+    @page { size: A4; margin: 14mm 14mm 12mm 14mm; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+      font-size: 10.5px;
+      line-height: 1.45;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ---------- Header ---------- */
+    header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      border-bottom: 2px solid var(--ink);
+      padding-bottom: 10px;
+      margin-bottom: 14px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .logo {
+      width: 36px; height: 36px;
+      border-radius: 9px;
+      background: linear-gradient(135deg, #ff8533, #ff6a00);
+      color: white;
+      display: grid; place-items: center;
+      font-weight: 700; font-size: 18px;
+      box-shadow: 0 4px 12px -4px rgba(255,106,0,0.5);
+    }
+    h1 {
+      margin: 0;
+      font-size: 22px;
+      letter-spacing: -0.02em;
+    }
+    .tagline {
+      margin: 2px 0 0 0;
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .stamp {
+      text-align: right;
+      font-size: 9px;
+      color: var(--soft);
+      line-height: 1.4;
+    }
+    .stamp strong { color: var(--ink); font-weight: 600; display: block; font-size: 10px; }
+
+    /* ---------- Sections ---------- */
+    section {
+      margin-bottom: 12px;
+    }
+    h2 {
+      font-size: 11px;
+      margin: 0 0 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--orange);
+      font-weight: 700;
+    }
+    p { margin: 0 0 6px; }
+
+    .lead {
+      font-size: 11.5px;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .lead strong { color: var(--ink); }
+
+    /* ---------- Access table ---------- */
+    .access {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+    .access-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 10px;
+    }
+    .access-card .lbl {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--soft);
+      margin-bottom: 2px;
+    }
+    .access-card a { color: var(--blue); text-decoration: none; word-break: break-all; }
+    .access-card .v { font-size: 10.5px; font-weight: 500; }
+
+    /* ---------- Credentials ---------- */
+    .creds {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .cred {
+      background: var(--orange-50);
+      border: 1px solid #ffd9b8;
+      border-radius: 8px;
+      padding: 9px 11px;
+    }
+    .cred .role {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--orange);
+      font-weight: 700;
+      margin-bottom: 3px;
+    }
+    .cred code {
+      font-family: ui-monospace, "SF Mono", Menlo, monospace;
+      font-size: 10.5px;
+      color: var(--ink);
+      background: white;
+      padding: 1px 5px;
+      border-radius: 4px;
+      border: 1px solid var(--line);
+    }
+    .cred .row { margin-top: 3px; }
+
+    /* ---------- 2-col features ---------- */
+    .features {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px 18px;
+    }
+    .feat {
+      display: flex;
+      gap: 8px;
+    }
+    .feat .num {
+      flex: 0 0 18px;
+      height: 18px;
+      border-radius: 5px;
+      background: var(--ink);
+      color: white;
+      font-weight: 700;
+      font-size: 9px;
+      display: grid; place-items: center;
+      margin-top: 1px;
+    }
+    .feat .body { font-size: 10px; line-height: 1.4; }
+    .feat .body strong { color: var(--ink); }
+    .feat .body p { margin: 0; color: var(--muted); }
+
+    /* ---------- Steps ---------- */
+    ol.steps {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      counter-reset: s;
+    }
+    ol.steps li {
+      counter-increment: s;
+      padding-left: 24px;
+      position: relative;
+      margin-bottom: 4px;
+      font-size: 10.5px;
+      color: var(--muted);
+    }
+    ol.steps li::before {
+      content: counter(s);
+      position: absolute;
+      left: 0; top: 1px;
+      width: 17px; height: 17px;
+      border-radius: 50%;
+      background: var(--orange);
+      color: white;
+      display: grid; place-items: center;
+      font-size: 9px; font-weight: 700;
+    }
+    ol.steps li strong { color: var(--ink); }
+
+    .stack {
+      font-size: 10px;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+    .stack b { color: var(--ink); }
+
+    .pills { display: flex; flex-wrap: wrap; gap: 4px; }
+    .pill {
+      font-size: 9px;
+      background: white;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 2px 8px;
+      color: var(--ink);
+    }
+
+    footer {
+      margin-top: 12px;
+      padding-top: 8px;
+      border-top: 1px solid var(--line);
+      font-size: 9px;
+      color: var(--soft);
+      display: flex;
+      justify-content: space-between;
+    }
+    .badge {
+      display: inline-block;
+      font-size: 8.5px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--orange);
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="logo">P</div>
+    <div>
+      <span class="badge">Coded Academy · Final Project</span>
+      <h1>PetroConnect</h1>
+      <p class="tagline">A verified-employee marketplace for Kuwait's K-Companies — built with AI from end to end.</p>
+    </div>
+  </div>
+  <div class="stamp">
+    <strong>Rashed Al-Rashed</strong>
+    Submission · May 2026<br/>
+    Solo project · 4 sprints
+  </div>
+</header>
+
+<section>
+  <h2>Access</h2>
+  <div class="access">
+    <div class="access-card">
+      <div class="lbl">Live platform</div>
+      <div class="v"><a href="https://petroconnect-virid.vercel.app">https://petroconnect-virid.vercel.app</a></div>
+    </div>
+    <div class="access-card">
+      <div class="lbl">Source code</div>
+      <div class="v"><a href="https://github.com/bosanad7/petroconnect">github.com/bosanad7/petroconnect</a></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Test Credentials</h2>
+  <div class="creds">
+    <div class="cred">
+      <div class="role">Member · Buyer / Seller</div>
+      <div class="row">Email: <code>ahmed.alsabah@knpc.com</code></div>
+      <div class="row">Password: <code>DemoPass2025</code></div>
+    </div>
+    <div class="cred">
+      <div class="role">Admin · Full dashboard</div>
+      <div class="row">Email: <code>fatma.almutairi@kockw.com</code></div>
+      <div class="row">Password: <code>DemoPass2025</code></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>What it is</h2>
+  <p class="lead">
+    PetroConnect is a <strong>closed marketplace</strong> exclusively for verified employees of Kuwait's nine K-Companies
+    (KPC, KOC, KNPC, KIPIC, PIC, KGOC, KUFPEC, KOTC, KAFCO, Q8). Registration is gated by corporate email at both the
+    UI and database layers — no public signups, no anonymous accounts. The full trade loop is implemented:
+    list → chat → structured offer → reserve → payment → mark sold → post-trade review.
+  </p>
+</section>
+
+<section>
+  <h2>Core Features</h2>
+  <div class="features">
+    <div class="feat"><div class="num">1</div><div class="body"><strong>Verified-only access</strong><p>Corporate-email gate enforced by Postgres trigger. Anonymous role: zero reach.</p></div></div>
+    <div class="feat"><div class="num">2</div><div class="body"><strong>Marketplace</strong><p>Products, services, service-requests with full-text + semantic search and filters.</p></div></div>
+    <div class="feat"><div class="num">3</div><div class="body"><strong>AI listing assistant</strong><p>Auto title, description, category, and fair-price suggestions powered by OpenRouter.</p></div></div>
+    <div class="feat"><div class="num">4</div><div class="body"><strong>Duplicate &amp; fraud guard</strong><p>1536-dim embeddings via pgvector + a JSON-strict LLM fraud classifier.</p></div></div>
+    <div class="feat"><div class="num">5</div><div class="body"><strong>Realtime chat</strong><p>Supabase Realtime, structured Offer cards with Accept/Decline, optimistic updates.</p></div></div>
+    <div class="feat"><div class="num">6</div><div class="body"><strong>AI message moderation</strong><p>Every message is scanned post-send; flagged messages surface in the admin queue.</p></div></div>
+    <div class="feat"><div class="num">7</div><div class="body"><strong>Trust System v2</strong><p>Composite score → 4 tiers (Newcomer · Trusted · Pro · Elite) with animated badges.</p></div></div>
+    <div class="feat"><div class="num">8</div><div class="body"><strong>Payment workflow</strong><p>Mock provider works today; MyFatoorah / Tap / KNET adapters ready to plug in.</p></div></div>
+    <div class="feat"><div class="num">9</div><div class="body"><strong>Admin command center</strong><p>Health gauge, revenue charts, transaction log, AI-flagged-message moderation.</p></div></div>
+    <div class="feat"><div class="num">10</div><div class="body"><strong>Command palette (⌘K)</strong><p>Global search across listings, members, and routes with keyboard navigation.</p></div></div>
+  </div>
+</section>
+
+<section>
+  <h2>How to evaluate (~5 minutes)</h2>
+  <ol class="steps">
+    <li>Open the live platform — review the landing page (animated stats, trust deep-dive) and the <strong>/trust</strong> page.</li>
+    <li>Sign in as <strong>Ahmed</strong> (member). Open any listing, press <strong>⌘K</strong> for the global command palette.</li>
+    <li>Click <strong>Message seller</strong> → use the tag icon in the composer to send a structured offer (e.g. 8000 KWD).</li>
+    <li>Switch to <strong>Fatma</strong> (admin) → open /chat → <strong>Accept</strong> Ahmed's offer (listing auto-reserves).</li>
+    <li>Back as Ahmed → click <strong>Proceed to payment</strong> → confirm → land on /payment/success with full receipt.</li>
+    <li>As Fatma → visit <strong>/admin</strong> → Marketplace Health gauge, KPIs, revenue charts, payments table, moderation queue.</li>
+  </ol>
+</section>
+
+<section>
+  <h2>Tech Stack</h2>
+  <div class="pills">
+    <span class="pill">Next.js 16 App Router</span>
+    <span class="pill">TypeScript</span>
+    <span class="pill">Tailwind CSS</span>
+    <span class="pill">Framer Motion</span>
+    <span class="pill">Supabase</span>
+    <span class="pill">Postgres + RLS</span>
+    <span class="pill">pgvector</span>
+    <span class="pill">Realtime</span>
+    <span class="pill">Supabase Storage</span>
+    <span class="pill">OpenRouter AI</span>
+    <span class="pill">Recharts</span>
+    <span class="pill">Vercel</span>
+  </div>
+  <p class="stack" style="margin-top:6px;">
+    <b>Database:</b> 15 tables with full RLS, 9 RPCs, 3 triggers, pgvector embeddings, FTS via tsvector, full audit log on payments.
+    <b>AI:</b> 9 endpoints (titles, descriptions, categories, fraud, search, recommendations, price, duplicate detection, message moderation).
+  </p>
+</section>
+
+<footer>
+  <span>© 2026 PetroConnect · Built in Kuwait</span>
+  <span>Commit · <code style="font-family:ui-monospace,monospace;font-size:9px;">40873db</code> · main</span>
+</footer>
+
+</body>
+</html>

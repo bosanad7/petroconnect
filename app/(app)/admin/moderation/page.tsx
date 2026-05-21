@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { MessageSquare, ShieldAlert } from "lucide-react";
 import { formatRelative } from "@/lib/utils/format";
 import { ModerationActions } from "@/components/admin/moderation-actions";
+import { ModerationSubnav } from "@/components/admin/moderation-subnav";
 
 export const dynamic = "force-dynamic";
 
@@ -56,16 +57,20 @@ export default async function AdminModerationPage() {
 
   if (rows.length === 0) {
     return (
-      <EmptyState
-        icon={<ShieldAlert className="size-5" />}
-        title="No flagged messages"
-        description="The AI moderator scans every chat message after send. Anything risky shows up here."
-      />
+      <div className="space-y-4">
+        <ModerationSubnav />
+        <EmptyState
+          icon={<ShieldAlert className="size-5" />}
+          title="No flagged messages"
+          description="The AI moderator scans every chat message after send. Anything risky shows up here."
+        />
+      </div>
     );
   }
 
   return (
     <div className="space-y-4">
+      <ModerationSubnav />
       <div className="flex items-baseline justify-between">
         <div>
           <h2 className="text-lg font-semibold">Flagged messages</h2>

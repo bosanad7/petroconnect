@@ -330,41 +330,44 @@ export function CreateListingForm({ categories, initialKind = "product" }: Props
         /* ignore */
       }
 
-      const { data: row, error } = await supabase
-        .from("listings")
-        .insert({
-          seller_id: user.id,
-          kind,
-          title,
-          description,
-          category_id: categoryId || null,
-          condition: kind === "product" ? condition || null : null,
-          price_kwd: price ? Number(price) : null,
-          is_negotiable: negotiable,
-          location,
-          images,
-          status: "active",
-          ai_score: aiScore,
-          ai_flags: aiFlags,
-        })
-        .select("id")
-        .single();
+      // Server-side validated path: the RPC enforces length / price /
+      // image caps, applies the same fraud heuristics the admin queue
+      // expects, and refuses to set seller-controlled admin fields.
+      const { data: newId, error } = await supabase.rpc("create_listing", {
+        p_kind: kind,
+        p_title: title.trim(),
+        p_description: description.trim(),
+        p_category_id: categoryId || null,
+        p_condition: kind === "product" ? (condition || null) : null,
+        p_price_kwd: price ? Number(price) : null,
+        p_is_negotiable: negotiable,
+        p_location: location,
+        p_images: images,
+      });
 
-      if (error || !row) {
+      if (error || !newId) {
         toast.error(error?.message ?? "Could not publish listing");
         return;
       }
 
-      // Compute + persist the listing's embedding so future searches and
-      // dedupe checks include it. Best-effort, non-blocking.
+      // Fire-and-forget server-side scans:
+      // - /api/listings/scan runs the fraud check + stamps the score
+      //   (server uses the service-role client to bypass the admin-only
+      //   field lock — sellers can't forge their own AI score).
+      // - /api/ai/embed-listing computes + stores the embedding.
+      void fetch("/api/listings/scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ listing_id: newId }),
+      });
       void fetch("/api/ai/embed-listing", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ listing_id: row.id }),
+        body: JSON.stringify({ listing_id: newId }),
       });
 
       toast.success("Listing published");
-      router.push(`/listings/${row.id}`);
+      router.push(`/listings/${newId}`);
     } finally {
       setSubmitting(false);
     }
